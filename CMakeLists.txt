@@ -15,3 +15,4 @@ add_executable(testC test.cpp)
 
 target_link_libraries(testC ${RapidJSON_LIBS})
 target_link_libraries(testC libmuduo_net.a libmuduo_base.a)
+target_link_libraries(testC libnanodbc.a)

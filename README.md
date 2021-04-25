@@ -59,6 +59,25 @@ sudo make install #generate lib files and put them in /usr/lib(maybe)
 
 ## Compile nanodbc
 
+Before you compile nanodbc, you should download UnixOdbc:
+
+download unixODBC-2.3.0.tar.gz
+
+```bash
+tar -xzvf unixODBC-2.3.0.tar.gz
+
+cd unixODBC-2.3.0.tar.gz
+
+./configure --enable-gui=no
+
+make
+
+sudo make install
+
+odbc_config  --version  #check odbc_config is installed
+
+```
+
 ```bash
 git clone <https://github.com/nanodbc/nanodbc.git> #download nanodbc
 
@@ -117,6 +136,6 @@ cp * ../../../cids-servsers/lib #put lib file to projectPath/lib
       - base 
     - nanodbc 
   - lib 
-    - libxxx.a      #10 lib files
+    - libxxx.a      #7/10 lib files
 
 
