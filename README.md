@@ -61,7 +61,9 @@ sudo make install #generate lib files and put them in /usr/lib(maybe)
 
 Before you compile nanodbc, you should download UnixOdbc:
 
-download unixODBC-2.3.0.tar.gz
+### download unixODBC-2.3.0.tar.gz
+
+Download unixODBC-2.3.0.tar.gz ,you can also use `sudo apt install unixodbc ` to download but it's unuseful to my system
 
 ```bash
 tar -xzvf unixODBC-2.3.0.tar.gz
@@ -77,6 +79,23 @@ sudo make install
 odbc_config  --version  #check odbc_config is installed
 
 ```
+
+### download odbc-mariadb
+{
+ `sudo apt install odbc-mariadb`
+ 
+<font size=16> TO BE CONTINUED!!!! </font>
+}
+
+### configure odbc-mariadb
+
+see complete info on "https://mariadb.com/kb/en/creating-a-data-source-with-mariadb-connectorodbc/"
+
+[MariaDB ODBC 3.0 Driver]
+Description = MariaDB Connector/ODBC v.3.0
+Driver=/usr/lib/x86_64-linux-gnu/odbc/libmaodbc.so
+
+
 
 ```bash
 git clone <https://github.com/nanodbc/nanodbc.git> #download nanodbc
