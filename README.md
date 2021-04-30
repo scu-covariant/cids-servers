@@ -61,7 +61,13 @@ sudo make install #generate lib files and put them in /usr/lib(maybe)
 
 Before you compile nanodbc, you should download UnixOdbc:
 
-### download unixODBC-2.3.0.tar.gz
+### download mariadb and configure
+
+### download unixodbc
+
+` sudo apt install unixodbc `
+
+### download unixODBC-2.3.0.tar.gz -> to download odbc_config
 
 Download unixODBC-2.3.0.tar.gz ,you can also use `sudo apt install unixodbc ` to download but it's unuseful to my system
 
@@ -84,7 +90,6 @@ odbc_config  --version  #check odbc_config is installed
 {
  `sudo apt install odbc-mariadb`
  
-<font size=16> TO BE CONTINUED!!!! </font>
 }
 
 ### configure odbc-mariadb
@@ -102,8 +107,6 @@ git clone <https://github.com/nanodbc/nanodbc.git> #download nanodbc
 
 cd nanodbc #change to nanodbc dir
 
-cp -r nanodbc ../cids-servser/include #copy include file to projectPath/include
-
 mkdir build #Put compiler output in build file
 
 cd build #change to build dir
@@ -112,8 +115,21 @@ cmake .. #generate Makefile
 
 make #generate other things you can add '-j4' after 'make' to make it faster
 
-cp libnanodbc.a ../../cids-servers/lib #copy library file to projectPath/lib
+sudo make install #add lib to your env
+
 ```
+add these statements to your CMakeLists.txt
+
+```cmake
+if (NOT TARGET nanodbc)
+  find_package(nanodbc CONFIG REQUIRED)
+endif()
+
+#add exe here
+
+target_link_libraries(SRC nanodbc)
+
+
 
 ------
 
