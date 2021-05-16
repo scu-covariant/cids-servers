@@ -1,6 +1,3 @@
-#ifndef SRC_MIRROR_MESSAGE_H
-#define SRC_MIRROR_MESSAGE_H
-
 #pragma once
 
 #include "../Udp.hpp"
@@ -12,11 +9,16 @@
 //暂时以string代表message的内容
 using Content = std::string;
 
+struct Content final{
+    std::string time_;
+    std::string image_url;
+    std::string message_;
+    std::string event_;
+};
+
 class Message 
 {
   private:
   Content content_; //消息内容
-  std::unordered_set<IP> dest_; //需要收到消息的目标
+  std::unordered_set<uint8_t> dest_; //需要收到消息的目标
 };
-
-#endif //SRC_MIRROR_MESSAGE_H

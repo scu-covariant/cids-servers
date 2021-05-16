@@ -1,0 +1,32 @@
+C:\Users\XM\AppData\Local\JetBrains\Toolbox\apps\CLion\ch-0\211.7142.21\bin\cmake\win\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - MinGW Makefiles" D:\2021_2\cids-server
+-- The C compiler identification is GNU 8.1.0
+-- The CXX compiler identification is GNU 8.1.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/BC/C/mingw64/bin/gcc.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/BC/C/mingw64/bin/g++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Error at CMakeLists.txt:6 (find_package):
+  By not providing "FindRapidJSON.cmake" in CMAKE_MODULE_PATH this project
+  has asked CMake to find a package configuration file provided by
+  "RapidJSON", but CMake did not find one.
+
+  Could not find a package configuration file provided by "RapidJSON" with
+  any of the following names:
+
+    RapidJSONConfig.cmake
+    rapidjson-config.cmake
+
+  Add the installation prefix of "RapidJSON" to CMAKE_PREFIX_PATH or set
+  "RapidJSON_DIR" to a directory containing one of the above files.  If
+  "RapidJSON" provides a separate development package or SDK, be sure it has
+  been installed.
+
+
+-- Configuring incomplete, errors occurred!
+See also "D:/2021_2/cids-server/cmake-build-debug/CMakeFiles/CMakeOutput.log".
