@@ -1,3 +1,6 @@
+#ifndef SRC_MIRROR_H
+#define SRC_MIRROR_H
+
 #include "muduo/base/ThreadPool.h"
 #include "muduo/net/InetAddress.h"
 #include "muduo/net/TcpServer.h"
@@ -14,12 +17,6 @@
 
 class Mirror
 {
-    class setting{
-        unsigned next_read_this_file_interval;
-        unsigned mir_heart_beat_interval;
-        unsigned mir_load_report_interval;
-        unsigned cli_class_info_cache_time;
-    };
   private:
   DetailLoadState load_;
   std::queue<Message> messages_;
@@ -31,6 +28,11 @@ class Mirror
   muduo::net::EventLoop loop_;
   muduo::net::TcpServer server_;
   muduo::ThreadPool pool_;
+
+//  数据库配置相关，仅在程序开始时使用
+  const std::string db_dsn = "MariaDB-server";
+  const std::string db_name = "root";
+  const std::string db_passwd = "root";
 private:
     //mirror start:
 
@@ -56,3 +58,5 @@ public:
     void start();
 
 };
+
+#endif //SRC_MIRROR_H

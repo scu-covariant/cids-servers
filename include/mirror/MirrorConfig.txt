@@ -1,4 +1,4 @@
-next_read: [600]s //多少秒之后重新读取配置文件, 需要不停机调试则尽量缩短, 但不建议小于30(半分钟)
+next_read_interval: [600]s //多少秒之后重新读取配置文件, 需要不停机调试则尽量缩短, 但不建议小于30(半分钟)
 mir_heart_beat_interval: [1]s    //心跳的间隔
 mir_load_report_interval: [60]   //多少个心跳包后更新负载情况
 cli_class_info_cache_time: [600]s //课程信息在cli断联后缓存时间, 如果内存紧张可以适当缩短

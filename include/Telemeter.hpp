@@ -44,10 +44,10 @@ const constexpr uint _permanent_thread_num_ = 3; //center的常驻线程数量
 //mirror的setting, POD type
 struct Setting
 {
-  int center_ip_;
-  //int backup_center_ip_;
   uint8_t mir_beat_interval_;
-  uint8_t //数据库ip?
+  uint8_t mir_report_interval_;
+  uint8_t class_cache_time_;
+  uint8_t class_interval_;
 };
 
 #endif
@@ -68,6 +68,13 @@ namespace telemeter
 #endif
 
 #ifdef SRC_MIRROR_H
+
+  Setting _set_cache_one = {600,1,60,600,55};
+  Setting _set_cache_two = {600,1,60,600,55};
+
+  Setting* setting = &_set_cache_one;
+  Setting* setting_copy = &_set_cache_two;
+
 #endif
   
     

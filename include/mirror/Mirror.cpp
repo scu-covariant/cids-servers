@@ -2,28 +2,35 @@
 
 
 void Mirror::start() {
-    //任务队列最大数量
+//任务队列最大数量
     pool_.setMaxQueueSize(30);
-    pool_.start(_permanent_thread_num_ + 5;)
+    //用std::hard_ware_concurrency()确定硬件支持的最大并发数量, 该数量 * 2为此程序运行时占用线程数
+    pool_.start(static_cast<int>(2 * std::thread::hardware_concurrency()));
+    auto thd_start = [&](const char* info){
+        std::clog << "thread start: " << info << std::endl;
+    };
 
-
-    //提交任务
-
-    this->pool_.run([this]() { read_config(); });
     //读取配置文件
+    this->pool_.run([this]() { read_config(); });
+    thd_start("read config");
+    //发送负载情况
     this->pool_.run([this]() { update_data_info(); });
-    //初始化数据库
-    this->pool_.run([this]() { update_data_info(); });
+    thd_start("update data info");
     //更新数据缓存
-    this->pool_.run([this]() { listen_cli_beat(); });
+    this->pool_.run([this]() { update_clis_data() });
+    thd_start("updae clients data")
+
     //建立cli链接
+    this->pool_.run([this]() { listen_cli_beat(); });
+    thd_start("listen clients beat");
 
     //输出日志
 }
 
 void Mirror::read_config() {
-//json格式
-    static std::string config_file_path{"CenterConfig.txt"};
+
+//    后可以考虑使用json格式
+    static std::string config_file_path{"MirrorConfig.txt"};
     static std::ifstream in{config_file_path, std::ios::in};
     Setting set{};
     memset(&set, 0, sizeof(Setting));
@@ -47,6 +54,8 @@ void Mirror::read_config() {
             else if (line.find("cli_class") != std::string::npos)
                 set.mir_max_disbeat_time_ = std::stoi(
                         std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+            else if(line.find("class_interval") != std::string::bois)
+                set.class_interval_ = std::stoi( std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
         }
     };
 
@@ -222,4 +231,6 @@ void Mirror::update_clis_data() {
         time_sleep_until(); //直到每日7:30
     }
 }
+
+
 
