@@ -1,0 +1,48 @@
+next_read_this_file_interval: [600]s //多少秒之后重新读取配置文件, 需要不停机调试则尽量缩短, 但不建议小于30(半分钟)
+
+mir_load_record_interval: [60]  //多少次收到心跳包后记录一次mirror的负载情况
+mir_load_dblog_interval: [5]    //多少次记录后, 一次性输出到遥测数据库
+mir_max_disbeat_time: [15]  //该数字乘上心跳间隔表示多少秒钟无心跳视为断线, 最大128
+cli_login_cache_time: [60]s   //多少秒内收到重复的cli登录请求视为包延迟到达
+
+变量命名:参照muduo库, 
+    类型名都是大写开头驼峰命名
+    类内函数名都是小写开头驼峰命名
+    变量名都以小写字母下划线命名
+    类内变量都额外加一个下划线结尾
+    常量额外以k开头
+    希望对外匿名的变量以下划线开头
+    
+建议:全局函数除了一个单词能表明含义的情况均以大写字母开头的驼峰命名
+
+center启动流程
+    读取配置文件, 读入各项数据到内存中, 没有配置文件则用默认值{60, 5, 60, 0}初始化
+    提交任务:
+        1.定时读取配置文件给telemeter的备份缓冲setting, 读取完成后交换主备份setting指针的值
+        2.开启3个 udp线程加入到线程池, 1. 收cli登录信息并回复, 调度算法在这里 2. 收mir心跳 3.收即时消息
+        3.loop启动
+        4.可能需要链接数据库
+        5.定时(每天0点)清空所有cli_ip和树形结构中的信息(类似重启), 触发条件是每晚各种东西都会断电掉线, 否则不需要
+
+cli登录流程:
+    cli发送udp给center的20800端口
+    ->center在cookie[无锁队列]中检查有无历史登录痕迹[读]
+        ->有:视为包延迟到达, 不做处理
+        ->无:回复当前可用mirr地址[即all_mir], 在all_cli[哈希表]中查询是否出现过该UUID
+        //{如果把以下两行的任务改为提交给线程池执行而不在io线程, 在多个cli短时间内一同登录时可能会出现同时写的问题?}
+            ->有:说明是今日重新连接, 在mirs_data中校正该ip所分配mir的信息, 需要遍历并且修改
+            ->无:说明是今天首次连接, 在mirs_data中记录该数据
+    ->在队列尾部新加入该缓冲, 设置cli_login_cache_pop_interval后pop掉队头的任务
+    ->输出日志, 包括cli_iD, timestamp, mir_ip, 
+
+mir登录及心跳流程:
+    center在20802接受到mir心跳的udp包, 该函数有一个静态变量all_beat_count_
+    ->在mirs_data中检查有无这个mir的ip
+        ->无, 是新的mir登录, 在mirs_data中记录该数据, 创建新的mirDescript, 标记其状态为untapped, beat_count = 
+        ->有, 是mir的心跳, 给该mirror的beat_重置为mir_max_disbeat_time, 记录负载情况到load_cache, 同时给all_beat_count+1, 判断此时all_beat_count的值, 若其 >= mirs_data.size() - 1 
+            ->是, 给mirs_data中每一个value的beat_count - 1, 判断此时 - 1 之后的beat_count == 0 ? 是则说明掉线, 不是则说明正常, 记录负载情况到load_cache中, 如果load_cache满则一次写入数据库并清空
+    //缺点在于一次掉线多个...
+
+message流程
+    center在20803收到message的心跳包(一个布尔量), 给mirs_data内所有key发送一个布尔量, 完成
+
