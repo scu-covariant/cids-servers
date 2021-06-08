@@ -1,6 +1,6 @@
 #include <unistd.h>
 
-#include "Mirror.cpp"
+#include <mirror_head>
 
 int main()
 {
@@ -11,8 +11,8 @@ int main()
     {
         mir.start();
     }
-    catch(std::exception& e)
+    catch(const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+       LOG_WARN << "some error happens  " << e.what() << '\n';
     }
 }

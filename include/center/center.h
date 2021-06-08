@@ -1,6 +1,6 @@
 #ifndef SRC_CENTER_H
 #define SRC_CENTER_H
-
+#pragma once
 #include "netinet/in.h"
 #include "sys/socket.h"
 #include "arpa/inet.h"
@@ -16,6 +16,7 @@
 #include <thread>
 
 #include <muduo/base/ThreadPool.h>
+#include <muduo/base/Logging.h>
 
 #include <common_head>
 

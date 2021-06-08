@@ -10,8 +10,9 @@
 #include <muduo/base/Timestamp.h>
 
 struct scu_date {
-    size_t week;
-    size_t day;
+    int week;
+    int day;
+    scu_date(int w, int d): week(w), day(d) { };
 };
 
 class scu_time {

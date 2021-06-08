@@ -14,7 +14,7 @@ if(NOT TARGET nanodbc)
 endif()
 
     #find- rapidjson
-find_package(RapidJson REQUIRED)
+find_package(RapidJSON REQUIRED)
 
     #already put muduo in the project
 

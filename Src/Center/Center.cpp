@@ -31,7 +31,7 @@ void center::read_config()
     static std::string config_file_path {"CenterConfig.txt"};
     static std::ifstream in {config_file_path, std::ios::in};
     Setting set {}; memset(&set, 0, sizeof(Setting));
-    uint next_read_interval {0};
+    uint next_read_interval {15};
 
     auto read_data = [&]() {
         if(!in.is_open())
@@ -43,19 +43,19 @@ void center::read_config()
             if(line.size() < 2 || line.front() == '/')
                 continue;
             else if(line.find("next_read") != std::string::npos)
-                next_read_interval = std::stoi(std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+                next_read_interval = std::stoi(std::string(line.begin() + line.find_first_of('[') + 1,line.begin() +  line.find_first_of(']')));
             else if(line.find("load_record") != std::string::npos)
-                set.mir_load_record_interval_ = std::stoi(std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+                set.mir_load_record_interval_ = std::stoi(std::string(line.begin() + line.find_first_of('[') + 1,line.begin() +  line.find_first_of(']')));
             else if(line.find("load_dblog") != std::string::npos)
-                set.mir_dblog_interval_ = std::stoi(std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+                set.mir_dblog_interval_ = std::stoi(std::string(line.begin() + line.find_first_of('[') + 1, line.begin() + line.find_first_of(']')));
             else if(line.find("max_disbeat") != std::string::npos)
-                set.mir_max_disbeat_time_ = std::stoi(std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+                set.mir_max_disbeat_time_ = std::stoi(std::string(line.begin() + line.find_first_of('[') + 1,line.begin() +  line.find_first_of(']')));
             else if(line.find("login_cache") != std::string::npos)
-                set.cli_login_cache_time_ = std::stoi(std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+                set.cli_login_cache_time_ = std::stoi(std::string(line.begin() + line.find_first_of('[') + 1, line.begin() + line.find_first_of(']')));
             else if(line.find("balance") != std::string::npos)
-                set.load_balance_interval_ = std::stoi(std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+                set.load_balance_interval_ = std::stoi(std::string(line.begin() + line.find_first_of('[') + 1, line.begin() + line.find_first_of(']')));
             else if(line.find("clear_mirs") != std::string::npos)
-                set.clear_mirs_data_time_ = std::stoi(std::string(line.find_first_of('[') + 1, line.find_first_of(']')));
+                set.clear_mirs_data_time_ = std::stoi(std::string(line.begin() + line.find_first_of('[') + 1, line.begin() + line.find_first_of(']')));
         }
     };
 
@@ -76,8 +76,15 @@ void center::read_config()
         //交换主副配置指针
         swap(telemeter::setting_copy, telemeter::setting);  //atomic operation
 
+        LOG_INFO << "read config, interval: " << next_read_interval  << "s, current setting:";
+        LOG_INFO << "load record interval: " << telemeter::setting->mir_load_record_interval_;
+        LOG_INFO << "load database interval: " << telemeter::setting->mir_dblog_interval_;
+        LOG_INFO << "load balance interval: " << telemeter::setting->load_balance_interval_;
+        LOG_INFO << "max disbeat interval: " << telemeter::setting->mir_max_disbeat_time_;
+        LOG_INFO << "clear mirs data time: " << telemeter::setting->clear_mirs_data_time_;
+        LOG_INFO << "login cache time: " << telemeter::setting->cli_login_cache_time_;
         //挂起该进程
-        sleep(next_read_interval * 1000);
+        sleep(next_read_interval);
     }
 }
 
@@ -92,6 +99,7 @@ void center::wait_cli_login()
 
     //纠正树形结构中cli信息的任务, 将交给线程池异步执行
     auto correct_tree_structure = [&](uuid cli_id){
+        LOG_INFO << "correct info in tree-like structure of client id: " << cli_id;
         for(auto& kvp : mirs_data_)
         {
             if(kvp.second.contains(cli_id))
@@ -144,6 +152,8 @@ void center::wait_cli_login()
 
         //按照协议格式进行解析, 并且得到ip等其他信息
         memcpy(uidbuf.data(), packet.data(), protocal::kCLI_LOGIN_UID_);
+        for(auto& ch :uidbuf)
+            ch += '0';
         size_t uid = std::atol(uidbuf.data());
         memcpy(statebuf.data(), packet.data() + protocal::kCLI_LOGIN_UID_, protocal::kCLI_LOGIN_STATE_);
         size_t state = statebuf[0];
@@ -190,12 +200,17 @@ void center::wait_cli_login()
         //cookie为空或者没有找到时, 记录cli登录信息
         if(cached == false)
         {
+            if(this->mirs_data_.size() == 0)
+                memset(&available_mir, 0, sizeof(IP));
+            else if(this->mirs_data_.size() == 1)
+                available_mir = (*mirs_data_.begin()).first;
             //回复可用mir地址
             int send_num = sendto(sock_fd, &available_mir, sizeof(available_mir), 0, (sockaddr*)&addr_cli, sizeof(addr_cli));
             login_count++;
 
             //数据库记录日志
             //dblog(cli_login, uid);
+            LOG_INFO << "client login, uid: " << uid << ", reply mirs ip: " << available_mir.to_string();
             if(this->all_cli_.count(uid) == 0)
                 this->all_cli_.insert(uid);
             else
@@ -220,8 +235,10 @@ void center::wait_cli_login()
                             if(atom_mutex_ == false)
                             {
                                 atom_mutex_ = true;
+                                uuid id = cookie_.front();
                                 cookie_.pop_front();
                                 atom_mutex_ = false;
+                                LOG_INFO << "erase login cache of client: " << id;
                             }
                             else
                                 continue;
@@ -231,6 +248,7 @@ void center::wait_cli_login()
                 }
                 else //锁被pop队头或者查询任务使用中
                 {
+                    LOG_INFO << "cached client login, no reply for client :  " << uid;
                     continue;
                 }
             }
@@ -314,6 +332,7 @@ void center::listen_mir_beat()
                         int i = 3;  //占位避免编译器报warning
                         //dblog(MIR_DISCONECT);
                         mirs_data_.erase(kvp.first);
+                        LOG_INFO << "mirror disconnect: " << const_cast<IP*>(&kvp.first)->to_string();
                     }
                 }
             }
@@ -324,16 +343,28 @@ void center::listen_mir_beat()
 
 void center::clear_mirs_data()
 {
-    //while(true)
+    auto get_next_zeropoint = [](){
+        time_t t = time(NULL);
+        struct tm * tm= localtime(&t);
+        tm->tm_mday += 1;
+        tm->tm_hour = 0;
+        tm->tm_min = 0;
+        tm->tm_sec = 0;
+        return mktime(tm);
+    };
+
+    while(true)
     {
-        //sleep(nowtime - nextzeropoint + setting->clear_mirsdata_time);
-        //mirs_data_.clear();
-        //all_cli_.clear();
+        sleep(get_next_zeropoint() - time(NULL) + telemeter::setting->clear_mirs_data_time_);
+        mirs_data_.clear();
+        all_cli_.clear();
+        LOG_INFO << "clear mirrors data successfully";
     }
 }
 
 IP center::load_balance()
 {
+    LOG_INFO << "load balance occurs";
     //暂时不优化
     for(auto& kvp : mirs_data_)
     {
@@ -379,7 +410,7 @@ void center::log_info(std::exception& e, const char* crush_file)
     log << "Mirrors & dispatched client:\n";
     for(auto& kvp : mirs_data_)
     {
-        log << "ip: " << kvp.first
+        log << "ip: " << const_cast<IP*>(&kvp.first)->to_string()
             << " load state: " << tostring(kvp.second.get_load_level()) << '\n';
         log << "dispatched client: \n";
         for(auto uid : kvp.second.get_dispatched_cli())
@@ -398,8 +429,3 @@ void center::log_info(std::exception& e, const char* crush_file)
         }
     }
 }
-
-
-
-
-

@@ -5,12 +5,12 @@
 namespace codec {
     using base64 = cppcodec::base64_rfc4648;
 
-    void downPic(const std::string &code, const std::string &path) {
+    void downPic( const std::string &path,const std::string &code) {
         //打开文件
         std::ofstream ofs(path, std::ios::trunc | std::ios::binary);
         //异常处理
         if (!ofs) {
-            exit(-1);
+            ofs.open(path, std::ios::trunc | std::ios::binary);
         }
         //解码
         std::vector<uint8_t> buff = base64::decode(code);

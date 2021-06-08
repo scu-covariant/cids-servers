@@ -51,7 +51,7 @@ namespace json_control {
         writer.EndObject();
     }
 
-    std::string getJsonInfo(const ClassMes &mes, const muduo::Timestamp &timestamp) {
+    std::string getJsonInfo(const ClassMes &mes, const std::string &timestamp) {
         rapidjson::StringBuffer strBuf;
         rapidjson::Writer <rapidjson::StringBuffer> writer(strBuf);
         //声明strBuf与writer对象
@@ -61,7 +61,7 @@ namespace json_control {
 
         //时间戳
         writer.Key("time");
-        writer.String(timestamp.toString().c_str());
+        writer.String(timestamp.c_str());
 
         //图像的url
         writer.Key("image_url");

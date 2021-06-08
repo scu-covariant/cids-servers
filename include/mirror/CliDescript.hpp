@@ -12,7 +12,7 @@ namespace Cli{
 
 struct CliDes{
     Cli::Uuid id;
-    size_t campus;
+    int campus;
     std::string stamp;
 };
 

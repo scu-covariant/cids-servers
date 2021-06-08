@@ -49,6 +49,10 @@ scu_time scu_time::toScutime(const muduo::Timestamp &timestamp){
     int seconds = allSeconds % 86400;
     size_t hour = seconds / 3600;
     size_t minute = (seconds - hour * 3600) / 60;
+    if(hour >= 16)
+        hour -= 16;
+    else
+        hour += 8;
     return scu_time(hour, minute);
 }
 

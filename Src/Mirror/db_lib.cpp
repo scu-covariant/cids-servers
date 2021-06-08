@@ -5,6 +5,7 @@ namespace db_control {
 
     using Cli::Uuid;
 
+    /*
     void check_week_and_day(nanodbc::connection conn, scu_date &date) {
         if (date.day == 7) {
             date.week += 1;
@@ -13,13 +14,13 @@ namespace db_control {
             date.day += 1;
         }
     }
-
+*/
     /*
      * param CCmap uuid->ClassMes
      * param skjc 上课节次
      *
      */
-
+/*暂停使用
     void
     query_lessons(nanodbc::connection conn, size_t skjc, bool two_lesson, std::unordered_map <Uuid, ClassMes> &CCmap,
                   scu_date *date, Uuid id) {
@@ -108,45 +109,169 @@ namespace db_control {
         }
 
     }
-
-    void query_background(nanodbc::connection conn, std::vector <backgrounds> &backgrounds) {
+*/
+    void query_background(nanodbc::connection &conn, std::vector <BackGround> &backgrounds) {
         //查询所有
         std::string sel_stmt = "SELECT * FROM backgrounds";
         //执行语句
         nanodbc::result find_row = nanodbc::execute(conn, sel_stmt);
 
-        for (; sel_stmt.next();) {
-            int id = sel_stmt.get<int>(0);
-            std::string code = sel_stmt.get<std::string>(1);
-            std::string des = sel_stmt.get<std::string>(2);
+        for (; find_row.next();) {
+            int id = find_row.get<int>(0);
+            std::string code = find_row.get<std::string>(1);
+            std::string des = find_row.get<std::string>(2);
 
             backgrounds.emplace_back(id, code, des);
         }
+
     }
 
-    std::string find_pic(const nanodbc::connection &conn, Cli::Uuid id) {
+    std::string find_pic(nanodbc::connection &conn, Cli::Uuid id) {
         nanodbc::statement statement(conn);
 
         nanodbc::prepare(statement, std::string("SELECT background FROM places WHERE UUID = ?"));
 
-        statement.bind(0, std::to_string(id));
+        statement.bind(0, &id);
 
-        nanodbc::result row = nanodbc.execute(statement);
+        nanodbc::result row = nanodbc::execute(statement);
 
         while (row.next()) {
             return row.get<std::string>(0);
         }
+        return "";
     }
 
+    std::deque <Message> find_mes(nanodbc::connection &conn, Cli::Uuid id, const std::string &stamp) {
+        //准备结果
+        std::deque <Message> res;
 
-     Lesson find_event(const nanodbc::connection &conn, Cli::Uuid id, nanodbc::connection conn, size_t skjc, scu_date *date, Uuid id){
+        nanodbc::statement statement(conn);
 
+        nanodbc::prepare(statement,
+                         std::string("SELECT title, expiretime, text FROM msg WHERE uuid = ? AND starttime = ? ;"));
+
+        statement.bind(0, &id);
+        statement.bind(1, stamp.c_str());
+
+        nanodbc::result row = nanodbc::execute(statement);
+
+        while (row.next()) {
+            Message mes;
+            mes.title = row.get<std::string>(0);
+            mes.expireTime = row.get<size_t>(1);
+            mes.text = row.get<std::string>(2);
+            res.push_back(mes);
+        }
+
+        return res;
     }
 
-    std::deque<Message> find_message(const nanodbc::connection& conn, Cli::Uuid id, muduo::Timestamp &stamp){
+    Lesson find_lesson(nanodbc::connection &conn, Cli::Uuid id, int skjc, const scu_date &date) {
+        //准备结果
+        Lesson ret;
 
+        std::string teacher_name;
+
+        nanodbc::statement statement(conn);
+
+        nanodbc::prepare(statement,
+                         std::string("SELECT\n"
+                                     "U.UUID AS uuid,\n"
+                                     "P.kch AS kch,\n"
+                                     "P.kxh AS kxh,\n"
+                                     "K.kcm AS kcm,\n"
+                                     "P.jsxm AS jsxm,\n"
+                                     "P.jxdd AS jxdd,\n"
+                                     "P.jsszxqh AS jsszxqh\n"
+                                     "FROM\n"
+                                     "places AS U\n"
+                                     "INNER JOIN pksj AS P ON U.place = P.jxdd \n"
+                                     "INNER JOIN kcb AS K ON P.kch = K.kch\n"
+                                     "WHERE U.UUID = ?\n"
+                                     "AND \n"
+                                     "P.sksj <= ? AND\n"
+                                     "P.sksj + P.cxjc > ? AND\n"
+                                     "P.skxq = ? AND\n"
+                                     "SUBSTR(qsz,?,1)=1"));
+
+        statement.bind(0, &id);
+        statement.bind(1, &skjc);
+        statement.bind(2, &date.day);
+        statement.bind(3, &date.day);
+        statement.bind(4, &date.week);
+
+
+        nanodbc::result row = nanodbc::execute(statement);
+
+        for (int i = 0; row.next(); i++) {
+
+            if (i != 0) {
+                teacher_name += ",";
+            }
+            ret.kch_ = row.get<std::string>(1);
+            ret.kxh_ = row.get<int>(2);
+            ret.kcm_ = row.get<std::string>(3);
+            teacher_name += row.get<std::string>(4);
+            ret.jxdd_ = row.get<std::string>(5);
+        }
+        ret.jsxm_ = teacher_name;
+
+        return ret;
     }
 
+    int find_campus(nanodbc::connection &conn, Cli::Uuid id) {
+
+        int ret;
+
+        nanodbc::statement statement(conn);
+
+        nanodbc::prepare(statement, std::string("SELECT \n"
+                                                "distinct P.jsszxqh AS campus \n"
+                                                "FROM pksj AS P\n"
+                                                "INNER JOIN places AS PL ON P.jxdd = PL.place\n"
+                                                "WHERE PL.UUID = ?"));
+
+        statement.bind(0, &id);
+
+        nanodbc::result row = nanodbc::execute(statement);
+
+        while (row.next()) {
+            ret = row.get<int>(0);
+        }
+
+        return ret;
+    }
+
+    scu_date update_calendar(nanodbc::connection &conn, int year, int month, int date) {
+
+        int week;
+        int day;
+
+        nanodbc::statement statement(conn);
+
+        nanodbc::prepare(statement, std::string("SELECT \n"
+                                                "now_week,\n"
+                                                "now_day\n"
+                                                "FROM\n"
+                                                "calendar\n"
+                                                "WHERE\n"
+                                                "year = ? AND\n"
+                                                "month = ? AND\n"
+                                                "date = ?"));
+
+        statement.bind(0, &year);
+        statement.bind(1, &month);
+        statement.bind(2, &date);
+
+        nanodbc::result row = nanodbc::execute(statement);
+
+        while (row.next()) {
+            week = row.get<int>(0);
+            day = row.get<int>(1);
+        }
+
+        return scu_date(week,day);
+    }
 
 
 }

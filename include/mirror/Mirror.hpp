@@ -9,6 +9,7 @@
 #include <string>
 #include <fstream>
 #include <thread>
+#include <atomic>
 
 //udp使用
 #include <stdio.h>
@@ -26,6 +27,8 @@
 #include <muduo/net/InetAddress.h>
 #include <muduo/net/TcpServer.h>
 #include <muduo/net/EventLoop.h>
+#include <muduo/base/Logging.h>
+
 #include <nanodbc/nanodbc.h>
 
 #include <common_head>
@@ -38,16 +41,22 @@ using Cli::Uuid;
 class Mirror final {
 
     struct OldHash {
-        size_t msg_, course_, event_, next_event_;
+        size_t url_, event_, next_event_;
+        std::deque<size_t> msgs_;
 
         bool operator==(const OldHash &x) {
-            return this->course_ == x.course_
+            auto iter1 = msgs_.begin();
+            auto iter2 = x.msgs_.begin();
+            for(; iter1 != msgs_.end(); iter1++, iter2++){
+                if(*iter1 != *iter2)
+                    return false;
+            }
+            return this->url_ == x.url_
                    && this->event_ == x.event_
-                   && this->msg_ == x.event_
                    && this->next_event_ == x.next_event_;
             //最后一位暂时不做比较
         }
-    }
+    };
 
 private:
 
@@ -67,6 +76,11 @@ private:
     std::unordered_map<Cli::Uuid, CliDes> Class2Campus;
     std::unordered_map<Cli::Uuid, OldHash> cli_info_;
 
+    std::atomic_size_t wj_section;
+    std::atomic_size_t ja_section;
+    std::atomic_size_t week;
+    std::atomic_size_t day;
+
 //    数据库连接
     nanodbc::connection conn;
 //    线程池
@@ -74,11 +88,8 @@ private:
 
 //  数据库配置相关，仅在程序开始时使用
 //    在配置文件获取
-    const std::string db_dsn = "MariaDB-server";
-    const std::string db_name = "root";
-    const std::string db_passwd = "root";
 
-    std::string img_path = "/home/jol";
+    const std::string config_file_path{"MirrorConfig.txt"};
 
     //配置文件
     std::vector<scu_time> wj_Time = {
@@ -119,21 +130,27 @@ private:
     //定时  更新图片与内存信息
     void update_pictures_info();
 
+    //定时 更新课程节次信息,包括江安与望江
+    void update_course_section();
+
+    //定时 更新校历信息
+    void update_school_calendar();
+
     //Client相关
     void listen_cli_beat();
 
 
+
     //回调查询信息
-    static void on_message(const muduo::net::TcpConnectionPtr &conn,
+    void on_message(const muduo::net::TcpConnectionPtr &conn,
                            muduo::net::Buffer *msg,
                            muduo::Timestamp time);
 
 
-    static void on_disconnected();
-
+/*
     void update_timestamp(const muduo::Timestamp &dataStamp, muduo::Timestamp *origin_campus_stamp,
                           muduo::Timestamp *copy_campus_stamp);
-
+*/
 //配置文件,初始化等
     void init();
 

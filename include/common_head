@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Common/ServerBase.hpp"
 #include "Common/Telemeter.hpp"
 #include "Common/Udp.hpp"

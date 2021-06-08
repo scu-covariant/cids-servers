@@ -15,9 +15,9 @@
 #include <cstdlib>
 #include <string>
 #include <sstream>
+#include <vector>
+#include <iostream>
 
-//暂时以int表示ip, 有需要则封装成类
-using IP = int;
 
 namespace port
 {
@@ -64,9 +64,43 @@ struct IP {
         this->seg2 = res[2];
         this->seg3 = res[3];
     }
+
+    std::string to_string()
+    {
+        return std::to_string(this->seg0) + '.' + std::to_string(this->seg1) + '.' + std::to_string(this->seg2) + '.' + std::to_string(this->seg3);
+    }
+
+    bool operator==(const IP& ip)const{
+        return this->seg0 == ip.seg0
+        && this->seg1 == ip.seg1
+        && this->seg2 == ip.seg2
+       && this->seg3 == ip.seg3;
+    }
+
+    IP& operator=(const IP& rhs){
+        if(this == &rhs)
+            return *this;
+        this->seg0 = rhs.seg0;
+        this->seg1 = rhs.seg1;
+        this->seg2 = rhs.seg2;
+        this->seg3 = rhs.seg3;
+        return *this;
+    }
 };
 
-bool GetHostInfo(std::string& hostName, std::string& Ip) {
+namespace std {
+    template<>
+    struct hash<IP> : public __hash_base<size_t, IP>
+    {
+        size_t operator()(const IP &ip) const noexcept    //这个const noexpect一定要写上去
+        {
+            return (((size_t)ip.seg0) << 24)  + (((size_t)ip.seg1) << 16)  + (((size_t)ip.seg2) << 8)  + ((size_t)ip.seg3)  ;
+        }
+    };
+}
+
+
+static bool GetHostInfo(std::string& hostName, std::string& Ip) {
     char name[256];
     gethostname(name, sizeof(name));
     hostName = name;
@@ -75,7 +109,7 @@ bool GetHostInfo(std::string& hostName, std::string& Ip) {
     char ipStr[32];
     const char* ret = inet_ntop(host->h_addrtype, host->h_addr_list[0], ipStr, sizeof(ipStr));
     if (NULL==ret) {
-        std::cout << "hostname transform to ip failed";
+//        std::cout << "hostname transform to ip failed";
         return false;
     }
     Ip = ipStr;

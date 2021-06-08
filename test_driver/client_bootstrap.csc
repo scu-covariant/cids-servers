@@ -11,18 +11,12 @@ var uuid = "0x46a8e4d9515650e4"hex.shift_left(8)
 var reconnect_time = 0
 
 function send_bootstrap()
-    var header = uuid.logic_or(bitset.from_number(reconnect_time))
-    system.out.println(header.to_string())
-    var header_str = new string
-    foreach i in range(8)
-        header_str += char.from_ascii(header.logic_and("0xFF"hex).to_number())
-        header = header.shift_right(8)
-    end
+    var header = "0011000100110001001100010011000100110001001100010011001000110000"
     var sock = new net.udp.socket
     sock.open_v4()
-    foreach i in range(10) do sock.send_to(header_str, server_ep)
+    foreach i in range(10) do sock.send_to(header, server_ep)
     try
-        return runtime.wait_until(100, sock.receive_from, {32, server_ep})
+        return runtime.wait_until(100, sock.receive_from, {128, server_ep})
     catch e
         if reconnect_time < 254
             ++reconnect_time
@@ -36,5 +30,7 @@ loop
     if ip != null
         system.out.println("Get: " + ip + ", Reconnect Time: " + reconnect_time)
         break
+    else
+        system.out.println("failed get ip")
     end
 end

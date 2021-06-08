@@ -59,12 +59,18 @@ const constexpr uint _permanent_thread_num_ = 4U; //center的常驻线程数量
 //mirror的setting, POD type
 struct Setting
 {
-  std::string center_ip_; //?解析
-//  int backup_center_ip_;
-  int next_read_interval_;
-  uint8_t mir_heart_beat_interval_;
-  uint16_t mir_load_report_interval_;
-  uint16_t cli_class_info_cache_time_;
+  int mir_heart_beat_interval;
+  int mir_load_report_interval;
+  std::string img_path;
+  std::string db_source;
+  std::string db_user;
+  std::string db_password;
+  std::string center_ip;
+  int update_pic_interval;
+  int utc_time;
+  std::string update_calendar_time;
+  std::string clear_clients_time;
+  int course_interval;
   //数据库ip?
 };
 #endif
@@ -77,7 +83,7 @@ namespace telemeter {
 #ifdef SRC_CENTER_H
     //双缓冲配置表解决一写多读线程安全问题
 
-  static Setting _set_cache_one = {60, 5, 15, 60, 20, 0};
+ static Setting _set_cache_one = {60, 5, 15, 60, 20, 0};
   static Setting _set_cache_two = {60, 5, 15, 60, 20, 0};
   //主要使用这个指针获取当前配置, 每次读取数据到第二个指针中, 然后交换两个指针的值
   static Setting* setting = &_set_cache_one;
@@ -102,8 +108,8 @@ namespace telemeter {
 #endif
 
 #ifdef SRC_MIRROR_H
-    static Setting _set_cache_one = {0,600,1,60,600};
-    static Setting _set_cache_two = {0,600,1,60,600};
+    static Setting _set_cache_one = {1, 60, "home/jol", "Scucids-server","teacher","zhirui208+", "192.168.233.14", 6,8,"24:00","24:00",60};
+  static Setting _set_cache_two = {1, 60, "home/jol", "Scucids-server","teacher","zhirui208+", "192.168.233.14", 6,8,"24:00","24:00",60};
     //主要使用这个指针获取当前配置, 每次读取数据到第二个指针中, 然后交换两个指针的值
     static Setting* setting = &_set_cache_one;
     static Setting* setting_copy = &_set_cache_two;
