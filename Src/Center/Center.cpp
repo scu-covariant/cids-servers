@@ -111,9 +111,9 @@ void center::wait_cli_login()
     };
 
     //用于接收数据的缓冲区
-    std::array<char, protocal::kCLI_LOGIN_PACSIZE_> packet {0};
-    std::array<char, protocal::kCLI_LOGIN_UID_> uidbuf {0};
-    std::array<unsigned char, protocal::kCLI_LOGIN_STATE_> statebuf {0};
+    std::array<char, protocol::kCLI_LOGIN_PACSIZE_> packet {0};
+    std::array<char, protocol::kCLI_LOGIN_UID_> uidbuf {0};
+    std::array<unsigned char, protocol::kCLI_LOGIN_STATE_> statebuf {0};
     //创建socket
     int sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
     //服务端addr和客户端addr, 后者保存发送方的信息
@@ -142,20 +142,26 @@ void center::wait_cli_login()
     //线程主循环
     while(true)
     {
-        int recv_num = recvfrom(sock_fd, packet.data(), packet.size(), MSG_WAITALL, (sockaddr*)&addr_cli, &place_holder_1);
+        char recv_buf[8];
+        memset(recv_buf, 0, sizeof(recv_buf));
+        int recv_num = recvfrom(sock_fd,recv_buf, protocol::kCLI_LOGIN_PACSIZE_, MSG_WAITALL, (sockaddr*)&addr_cli, &place_holder_1);
         //MSG_WAITALL：要求阻塞操作，直到请求得到完整的满足。
         //如果捕捉到信号，错误或者连接断开发生，或者下次被接收的数据类型不同，仍会返回少于请求量的数据。
 
         //可能是阻塞超时, 进行下次循环
-        if(recv_num < 0)
+        if(recv_num < 0){
+            LOG_WARN << "recv from client error";
             continue;
+        }
 
+        for(int i = 0; i < 8; i++)
+            packet[i] = recv_buf[i];
         //按照协议格式进行解析, 并且得到ip等其他信息
-        memcpy(uidbuf.data(), packet.data(), protocal::kCLI_LOGIN_UID_);
+        memcpy(uidbuf.data(), packet.data(), protocol::kCLI_LOGIN_UID_);
         for(auto& ch :uidbuf)
             ch += '0';
         size_t uid = std::atol(uidbuf.data());
-        memcpy(statebuf.data(), packet.data() + protocal::kCLI_LOGIN_UID_, protocal::kCLI_LOGIN_STATE_);
+        memcpy(statebuf.data(), packet.data() + protocol::kCLI_LOGIN_UID_, protocol::kCLI_LOGIN_STATE_);
         size_t state = statebuf[0];
         //state暂时不做处理
 
@@ -205,7 +211,8 @@ void center::wait_cli_login()
             else if(this->mirs_data_.size() == 1)
                 available_mir = (*mirs_data_.begin()).first;
             //回复可用mir地址
-            int send_num = sendto(sock_fd, &available_mir, sizeof(available_mir), 0, (sockaddr*)&addr_cli, sizeof(addr_cli));
+            char send_buf[4] = {available_mir.seg0,available_mir.seg1,available_mir.seg2,available_mir.seg3};
+            int send_num = sendto(sock_fd, send_buf, protocol::kCENT_RESPONSE_PACSIZE_, 0, (sockaddr*)&addr_cli, sizeof(addr_cli));
             login_count++;
 
             //数据库记录日志
@@ -228,7 +235,7 @@ void center::wait_cli_login()
                     atom_mutex_ = false;
 
                     //设置一段时间后pop掉队头的任务
-                    this->pool_.run( [this](){
+                    this->pool_.run( [this, &uid](){
                         sleep(telemeter::setting->cli_login_cache_time_);
                         while(true)
                         {
@@ -240,8 +247,11 @@ void center::wait_cli_login()
                                 atom_mutex_ = false;
                                 LOG_INFO << "erase login cache of client: " << id;
                             }
-                            else
+                            else{
+                                LOG_INFO << "cached client login, no reply for client: " << uid;
                                 continue;
+                            }
+
                         }
                     });
                     break;
@@ -271,9 +281,9 @@ void center::listen_mir_beat()
     size_t all_beat_count {0}; //用于判活算法
 
     //用于接收数据的缓冲区
-    std::array<uint8_t, protocal::kMIR_BEAT_PACSIZE_> packet {0};
-    std::array<uint8_t, protocal::kMIR_BEAT_IP_> ipbuf {0};
-    std::array<uint8_t, protocal::kMIR_BEAT_LOAD_> loadbuf {0};
+    std::array<uint8_t, protocol::kMIR_BEAT_PACSIZE_> packet {0};
+    std::array<uint8_t, protocol::kMIR_BEAT_IP_> ipbuf {0};
+    std::array<uint8_t, protocol::kMIR_BEAT_LOAD_> loadbuf {0};
     //创建socket
     int sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
     //服务端addr和客户端addr, 后者保存发送方的信息
@@ -298,19 +308,28 @@ void center::listen_mir_beat()
     //线程主循环
     while(true)
     {
-        int recv_num = recvfrom(sock_fd, packet.data(), packet.size(), MSG_WAITALL, (sockaddr*)&addr_mir, &place_holder_1);
+        char recv_buf[8] = {0};
+        memset(recv_buf, 0, sizeof(recv_buf));
+        int recv_num = recvfrom(sock_fd, recv_buf, protocol::kMIR_BEAT_PACSIZE_, MSG_WAITALL, (sockaddr*)&addr_mir, &place_holder_1);
         //MSG_WAITALL：要求阻塞操作，直到请求得到完整的满足。
         //如果捕捉到信号，错误或者连接断开发生，或者下次被接收的数据类型不同，仍会返回少于请求量的数据。
 
         //可能是阻塞超时, 进行下次循环
-        if(recv_num < 0)
+        if(recv_num < 0) {
+            LOG_WARN << "recv from mirror error";
             continue;
+        }
 
+        for(int i = 0; i < 8; i++)
+            packet[i] = recv_buf[i];
         //按照协议格式进行解析, 并且得到ip等其他信息
-        memcpy(ipbuf.data(), packet.data(), protocal::kMIR_BEAT_IP_);
-        memcpy(loadbuf.data(), packet.data() + protocal::kMIR_BEAT_IP_, protocal::kMIR_BEAT_LOAD_);
+        memcpy(ipbuf.data(), packet.data(), protocol::kMIR_BEAT_IP_);
 
-        mir_ip = (ipbuf[0] << 24) + (ipbuf[1] << 16) + (ipbuf[2] << 8) + (ipbuf[3]);
+        memcpy(loadbuf.data(), packet.data() + protocol::kMIR_BEAT_IP_, protocol::kMIR_BEAT_LOAD_);
+
+        mir_ip = IP(ipbuf[0], ipbuf[1], ipbuf[2], ipbuf[3]);
+        LOG_INFO << mir_ip.to_string() << " send packet " << packet.data();
+
         if(mirs_data_.count(mir_ip) == 0)
         {
             mirs_data_.insert({mir_ip, MirDescript()});
@@ -324,17 +343,17 @@ void center::listen_mir_beat()
             all_beat_count++;
             if(all_beat_count >= mirs_data_.size() - 1)
             {
-                for(auto& kvp : mirs_data_)
-                {
-                    if(kvp.second.decre_and_get_beat() <= 0);
-                    {
-                        //说明有mir掉线了
-                        int i = 3;  //占位避免编译器报warning
-                        //dblog(MIR_DISCONECT);
-                        mirs_data_.erase(kvp.first);
-                        LOG_INFO << "mirror disconnect: " << const_cast<IP*>(&kvp.first)->to_string();
-                    }
-                }
+//                for(auto& kvp : mirs_data_)
+//                {
+//                    if(kvp.second.decre_and_get_beat() <= 0);
+//                    {
+//                        //说明有mir掉线了
+//                        int i = 3;  //占位避免编译器报warning
+//                        //dblog(MIR_DISCONECT);
+//                        mirs_data_.erase(kvp.first);
+//                        LOG_INFO << "mirror disconnect: " << const_cast<IP*>(&kvp.first)->to_string();
+//                    }
+//                }
             }
         }
 

@@ -11,7 +11,7 @@ var uuid = "0x46a8e4d9515650e4"hex.shift_left(8)
 var reconnect_time = 0
 
 function send_bootstrap()
-    var header = "0011000100110001001100010011000100110001001100010011001000110000"
+    var header = "12345670"
     var sock = new net.udp.socket
     sock.open_v4()
     foreach i in range(10) do sock.send_to(header, server_ep)

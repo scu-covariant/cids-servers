@@ -49,6 +49,8 @@ void Mirror::init() {
             telemeter::setting->db_password = std::string(line.begin() +line.find_first_of('[') + 1, line.begin() +line.find_first_of(']'));
         else if (line.find("center_ip") != std::string::npos)
             telemeter::setting->center_ip = std::string(line.begin() +line.find_first_of('[') + 1, line.begin() +line.find_first_of(']'));
+        else if (line.find("this_ip") != std::string::npos)
+            telemeter::setting->this_ip = std::string(line.begin() +line.find_first_of('[') + 1, line.begin() +line.find_first_of(']'));
         else if (line.find("update_pic_interval") != std::string::npos)
             telemeter::setting->update_pic_interval = std::stoi(
                     std::string(line.begin() +line.find_first_of('[') + 1,line.begin() + line.find_first_of(']')));
@@ -107,6 +109,8 @@ void Mirror::init() {
 
 void Mirror::start() {
 
+
+
     //初始化配置文件及各数据
     this->init();
 
@@ -152,15 +156,23 @@ void Mirror::start() {
 
 
 void Mirror::update_data_info() {
-//    发送ip地址
-//    using Server::IP;
+
+    //        发送‘心跳包’
+    int sock;
+    if ((sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
+        std::cerr << "sock error" << std::endl;
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+//    设置发送端口
+    servaddr.sin_port = htons(port::kMIR_BEAT_);
+//    设置发送ip
+/*修改:若发送失败,则沿用之前的ip*/
+    servaddr.sin_addr.s_addr = inet_addr((telemeter::setting->center_ip).c_str());
 
     //    更新间隔
     size_t time = 0;
-
-    unsigned char this_ip[4] = {'0', '0', '0', '0'};//解析ip
-
-    //    发送的息
+    //    发送消息
     char send_buf[8] = {0};
 //    定义计算服务器负载情况的函数
     auto cal_ser_load = [&]() -> uint8_t {
@@ -181,14 +193,7 @@ void Mirror::update_data_info() {
 
     auto get_packet = [&]() {
 
-//     getMyip
-        std::string host;
-        std::string ip;
-        bool err = GetHostInfo(host, ip);
-        if (!err) {
-            //报错
-        }
-        IP this_ip(ip);
+        IP this_ip(telemeter::setting->this_ip);
 
         //calculate ServerLoad
         unsigned char serverLoad = cal_ser_load();
@@ -238,37 +243,20 @@ void Mirror::update_data_info() {
             //to_string(8byte) = 4+1+1+1+1 true/false
             //重置缓冲
             memset(send_buf, 0, sizeof(send_buf));
-
             //获取负载情况
             std::vector<unsigned char> info = get_packet();
-
             //更新负载情况
             for (int i = 0; i < 7; i++)
                 send_buf[i] = info[i];
-
             //最后位填充0
             send_buf[7] = '\0';
-
             //重置time
             time = 1;
 
-            LOG_INFO << "update pack";
         }
 
-//        发送‘心跳包’
-        int sock;
-        if ((sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
-            std::cerr << "sock error" << std::endl;
-        struct sockaddr_in servaddr;
-        memset(&servaddr, 0, sizeof(servaddr));
-        servaddr.sin_family = AF_INET;
-//    设置发送端口
-        servaddr.sin_port = htons(port::kMIR_BEAT_);
-//    设置发送ip
-/*修改:若发送失败,则沿用之前的ip*/
-        servaddr.sin_addr.s_addr = inet_addr((telemeter::setting->center_ip).c_str());
 //    发送缓存
-        sendto(sock, send_buf, strlen(send_buf), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+        sendto(sock, send_buf, protocol::kMIR_BEAT_PACSIZE_, 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
         // 统计发送心跳包次数
         time++;
         //心跳包频率
@@ -313,6 +301,8 @@ void Mirror::read_config() {
                 set.db_password = std::string(line.begin() +line.find_first_of('[') + 1,line.begin() + line.find_first_of(']'));
             else if (line.find("center_ip") != std::string::npos)
                 set.center_ip = std::string(line.begin() +line.find_first_of('[') + 1, line.begin() +line.find_first_of(']'));
+            else if (line.find("this_ip") != std::string::npos)
+                telemeter::setting->this_ip = std::string(line.begin() +line.find_first_of('[') + 1, line.begin() +line.find_first_of(']'));
             else if (line.find("update_pic_interval") != std::string::npos)
                 set.update_pic_interval = std::stoi(std::string(line.begin() +line.find_first_of('[') + 1, line.begin() +line.find_first_of(']')));
             else if (line.find("utc_time: ") != std::string::npos)
@@ -536,7 +526,7 @@ void Mirror::on_message(const muduo::net::TcpConnectionPtr &connectionPtr,
         next_event = false;
 
 
-    std::string pic_url = telemeter::setting->img_path + "/" + db_control::find_pic(this->conn, id) + ".jpg";
+    std::string pic_url = "http://" + telemeter::setting->this_ip + ":" + std::to_string(port::kMIR_HTTP_) + telemeter::setting->img_path + "/" + db_control::find_pic(this->conn, id) + ".jpg";
 
     std::deque <Message> msgs = db_control::find_mes(this->conn, id, std::to_string(stamp)); //统一utc时间
 
@@ -554,9 +544,11 @@ void Mirror::on_message(const muduo::net::TcpConnectionPtr &connectionPtr,
         msgs_hash.push_back(std::hash<Message>()(*iter));
     }
 
-    if (new_hash == old)
+    if (new_hash == old) {
         connectionPtr->send(json_control::no_need_update);
-    else {
+
+    }else {
+        cli_info_[id] = new_hash;
         ClassMes sendInfo;
         sendInfo.image_url = pic_url;
         sendInfo.messages = msgs;

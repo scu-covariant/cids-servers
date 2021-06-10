@@ -24,10 +24,10 @@ namespace port
     const constexpr size_t kCLI_LOGIN_  = 20800;
     const constexpr size_t kCLI_BEAT_   = 20801;
     const constexpr size_t kMIR_BEAT_   = 20802;
-    const constexpr size_t kINS_MSG_    = 20803;
+    const constexpr size_t kMIR_HTTP_    = 20803;
 }
 
-namespace protocal
+namespace protocol
 {
     //以字节计算的每个包的大小和协议中每一部分的大小, 二级缩进的和应该等于第一级缩进
     const constexpr size_t kCLI_LOGIN_PACSIZE_      = 8;

@@ -66,6 +66,7 @@ struct Setting
   std::string db_user;
   std::string db_password;
   std::string center_ip;
+  std::string this_ip;
   int update_pic_interval;
   int utc_time;
   std::string update_calendar_time;
@@ -108,8 +109,8 @@ namespace telemeter {
 #endif
 
 #ifdef SRC_MIRROR_H
-    static Setting _set_cache_one = {1, 60, "home/jol", "Scucids-server","teacher","zhirui208+", "192.168.233.14", 6,8,"24:00","24:00",60};
-  static Setting _set_cache_two = {1, 60, "home/jol", "Scucids-server","teacher","zhirui208+", "192.168.233.14", 6,8,"24:00","24:00",60};
+    static Setting _set_cache_one = {1, 60, "/var/www/html/images", "Scucids-server","teacher","zhirui208+", "192.168.233.14","192.168.233.13", 6,8,"24:00","24:00",60};
+    static Setting _set_cache_two = {1, 60, "/var/www/html/images", "Scucids-server","teacher","zhirui208+", "192.168.233.14", "192.168.233.13",6,8,"24:00","24:00",60};
     //主要使用这个指针获取当前配置, 每次读取数据到第二个指针中, 然后交换两个指针的值
     static Setting* setting = &_set_cache_one;
     static Setting* setting_copy = &_set_cache_two;
