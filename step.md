@@ -4,12 +4,12 @@ sudo -s
 (**you passwd**)
 
 * 基本工具
-apt update
-apt upgrade
-apt install g++
-apt install cmake
-apt install make
-apt install git
+apt update  
+apt upgrade  
+apt install g++  
+apt install cmake  
+apt install make  
+apt install git  
 
 * 准备环境
 cd home
