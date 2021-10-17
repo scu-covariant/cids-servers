@@ -61,7 +61,7 @@ apt install unixodbc
 
 #下载odbc_config
 tar -xzvf  unixODBC-2.3.9.tar.gz  
-cd unixODBC-2.3.9.tar.gz  
+cd unixODBC-2.3.9
 ./configure --enable-gui=no  
 make  
 sudo make install  
